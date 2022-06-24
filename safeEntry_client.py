@@ -18,9 +18,6 @@ def run():
     with grpc.insecure_channel('localhost:50051') as channel:
         stub = safeEntry_pb2_grpc.SafeEntryStub(channel)
 
-        r = csv.reader(open('safeEntry.csv'))
-        data = list(r)
-
         name_input = input("Please enter name: ")
         nric_input = input("Please enter NRIC: ")
 
@@ -77,6 +74,8 @@ def run():
 
                 # Check Out
                 elif rpc_call == "2":
+                    r = csv.reader(open('safeEntry.csv'))
+                    data = list(r)
                     check_id = ""
                     for row in reversed(data):
                         existing_name = row[0]
@@ -104,6 +103,8 @@ def run():
 
                 # Group Check Out
                 elif rpc_call == "4":
+                    r = csv.reader(open('safeEntry.csv'))
+                    data = list(r)
                     group_check_id = ""
                     for row in reversed(data):
                         existing_name = row[0]
