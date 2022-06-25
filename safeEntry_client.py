@@ -2,9 +2,7 @@ from __future__ import print_function
 
 import threading
 import logging
-from tabnanny import check
-from tokenize import group
-import queue
+
 
 import grpc
 import safeEntry_pb2
@@ -12,14 +10,12 @@ import safeEntry_pb2_grpc
 from datetime import datetime
 import csv
 import time
+import ast
 
 
 def run():
     with grpc.insecure_channel('localhost:50051') as channel:
         stub = safeEntry_pb2_grpc.SafeEntryStub(channel)
-
-        r = csv.reader(open('safeEntry.csv'))
-        data = list(r)
 
         name_input = input("Please enter name: ")
         nric_input = input("Please enter NRIC: ")
@@ -31,19 +27,30 @@ def run():
                 rpc_call = input("Please enter function: ")
 
                 if rpc_call == "/ListCases":
-                    print("LISTING FUNCTION")
                     responses = stub.ListCases(get_client_stream_requests())
                     print("Case List Past 14 days:")
                     for response in responses:
                         print(response.message)
 
         else:
-            print("Normal Login")
-
             t2 = threading.Thread(target=get_notifications,
                                   args=[stub, nric_input])
             t2.start()
+            check = stub.LogInNotification(
+                safeEntry_pb2.Reply(message=nric_input))
+            for status in check:
+                print(status.message)
 
+            print("1. West Mall")
+            print("2. Bukit Panjang Plaza")
+            print("3. JCube")
+            select_location = input("Please select location:")
+            if select_location == "1":
+                selected_location = "West Mall"
+            elif select_location == "2":
+                selected_location = "Bukit Panjang Plaza"
+            elif select_location == "3":
+                selected_location = "JCube"
             while True:
                 print("1. Check In")
                 print("2. Check Out")
@@ -56,16 +63,18 @@ def run():
                     timestamp = datetime.now()
                     checkin_time = timestamp.strftime("%d/%m/%Y %H:%M:%S")
                     tracking_id = nric_input + " " + checkin_time
-                    print(tracking_id)
                     request = safeEntry_pb2.Request(
-                        name=name_input, nric=nric_input, location='West Mall', checkin=checkin_time, id=tracking_id)
+                        name=name_input, nric=nric_input, location=selected_location, checkin=checkin_time, id=tracking_id)
                     response = stub.CheckIn(request)
-                    print("Test3")
                     checkin_message = "Details:\n" + str(response.message)
                     print(checkin_message)
 
                 # Check Out
                 elif rpc_call == "2":
+                    file = open('safeEntry.csv')
+                    csvreader = csv.reader(file)
+                    data = list(csvreader)
+                    file.close()
                     check_id = ""
                     for row in reversed(data):
                         existing_name = row[0]
@@ -84,15 +93,21 @@ def run():
                             response = stub.CheckOut(request)
                             checkout_message = "Details:\n" + \
                                 str(response.message)
+                            print(checkout_message)
 
                 # Group Check In
                 elif rpc_call == "3":
                     response = stub.GroupCheckIn(
                         groupcheckin_requests(name_input, nric_input))
                     groupcheckin_message = "Details:\n" + str(response.message)
+                    print(groupcheckin_message)
 
                 # Group Check Out
                 elif rpc_call == "4":
+                    file = open('safeEntry.csv')
+                    csvreader = csv.reader(file)
+                    data = list(csvreader)
+                    file.close()
                     group_check_id = ""
                     for row in reversed(data):
                         existing_name = row[0]
@@ -150,11 +165,8 @@ def groupcheckin_requests(name_input, nric_input):
 
 
 def get_client_stream_requests():
-    print("Entered Here")
     for i in range(2):
-        print(i)
         if i == 0:
-            print("Checking List")
             yield safeEntry_pb2.Reply(message=" ")
         else:
             nric = input(
@@ -166,17 +178,21 @@ def get_client_stream_requests():
 
 
 def get_notifications(stub, nric):
-    print(nric)
     while True:
         responses = stub.GetNotified(safeEntry_pb2.Reply(message=nric))
-        print(responses)
         if responses.message == "False":
             pass
         else:
+            response = ast.literal_eval(responses.message)
             print(
-                f'You have been in area where a covid case has arrived\n Here are the details: {responses.message}')
-        time.sleep(2)
-    # return safeEntry_pb2.Reply(message="testing")
+                "You recently were in area visited by covid positive case. Here are the details:")
+            if response == type(list) or type(tuple):
+                for i in response:
+                    print(f'Location: {i[0]} from {i[1]} to {i[2]}')
+            else:
+                print(
+                    f'Location: {response[0]} from {response[1]} to {response[2]}')
+        time.sleep(5)
 
 
 if __name__ == '__main__':

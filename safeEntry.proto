@@ -6,11 +6,12 @@ package safeEntry;
 service SafeEntry {
   rpc CheckIn (Request) returns (Reply) {}
   rpc CheckOut (Request) returns (Reply) {}
-  rpc GroupCheckIn (stream Request) returns (DelayedReply) {}
+  rpc GroupCheckIn (stream Request) returns (Reply) {}
   rpc GroupCheckOut (Request) returns (Reply) {}
   rpc ListCases (stream Reply) returns (stream Reply){}
   rpc DeclareAffected (Reply) returns (Reply){}
   rpc GetNotified(Reply) returns (Reply){}
+  rpc LogInNotification(Reply) returns(stream Reply){}
 }
 
 // An empty request message

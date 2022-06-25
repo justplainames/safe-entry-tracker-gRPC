@@ -28,7 +28,7 @@ class SafeEntryStub(object):
         self.GroupCheckIn = channel.stream_unary(
                 '/safeEntry.SafeEntry/GroupCheckIn',
                 request_serializer=safeEntry__pb2.Request.SerializeToString,
-                response_deserializer=safeEntry__pb2.DelayedReply.FromString,
+                response_deserializer=safeEntry__pb2.Reply.FromString,
                 )
         self.GroupCheckOut = channel.unary_unary(
                 '/safeEntry.SafeEntry/GroupCheckOut',
@@ -47,6 +47,11 @@ class SafeEntryStub(object):
                 )
         self.GetNotified = channel.unary_unary(
                 '/safeEntry.SafeEntry/GetNotified',
+                request_serializer=safeEntry__pb2.Reply.SerializeToString,
+                response_deserializer=safeEntry__pb2.Reply.FromString,
+                )
+        self.LogInNotification = channel.unary_stream(
+                '/safeEntry.SafeEntry/LogInNotification',
                 request_serializer=safeEntry__pb2.Reply.SerializeToString,
                 response_deserializer=safeEntry__pb2.Reply.FromString,
                 )
@@ -98,6 +103,12 @@ class SafeEntryServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def LogInNotification(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_SafeEntryServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -114,7 +125,7 @@ def add_SafeEntryServicer_to_server(servicer, server):
             'GroupCheckIn': grpc.stream_unary_rpc_method_handler(
                     servicer.GroupCheckIn,
                     request_deserializer=safeEntry__pb2.Request.FromString,
-                    response_serializer=safeEntry__pb2.DelayedReply.SerializeToString,
+                    response_serializer=safeEntry__pb2.Reply.SerializeToString,
             ),
             'GroupCheckOut': grpc.unary_unary_rpc_method_handler(
                     servicer.GroupCheckOut,
@@ -133,6 +144,11 @@ def add_SafeEntryServicer_to_server(servicer, server):
             ),
             'GetNotified': grpc.unary_unary_rpc_method_handler(
                     servicer.GetNotified,
+                    request_deserializer=safeEntry__pb2.Reply.FromString,
+                    response_serializer=safeEntry__pb2.Reply.SerializeToString,
+            ),
+            'LogInNotification': grpc.unary_stream_rpc_method_handler(
+                    servicer.LogInNotification,
                     request_deserializer=safeEntry__pb2.Reply.FromString,
                     response_serializer=safeEntry__pb2.Reply.SerializeToString,
             ),
@@ -194,7 +210,7 @@ class SafeEntry(object):
             metadata=None):
         return grpc.experimental.stream_unary(request_iterator, target, '/safeEntry.SafeEntry/GroupCheckIn',
             safeEntry__pb2.Request.SerializeToString,
-            safeEntry__pb2.DelayedReply.FromString,
+            safeEntry__pb2.Reply.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -261,6 +277,23 @@ class SafeEntry(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/safeEntry.SafeEntry/GetNotified',
+            safeEntry__pb2.Reply.SerializeToString,
+            safeEntry__pb2.Reply.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def LogInNotification(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(request, target, '/safeEntry.SafeEntry/LogInNotification',
             safeEntry__pb2.Reply.SerializeToString,
             safeEntry__pb2.Reply.FromString,
             options, channel_credentials,

@@ -8,19 +8,28 @@ import csv
 import pandas as pd
 import datetime
 from collections import defaultdict
+import time
+import threading
 
 
-to_notify = {"Test": "IT finally fucking WORKSSS"}
+to_notify = {"237444T": [("a", 'b', 'c'), ('d', 'e', 'f')]}
+affected_locations = []
 
 
 class SafeEntry(safeEntry_pb2_grpc.SafeEntryServicer):
 
     # Self Check In
     def CheckIn(self, request, context):
+        global affected_locations
         checkin_message = safeEntry_pb2.Reply()
         checkin_message.message = f'Name: {request.name}\nNRIC: {request.nric}\nLocation: {request.location}\nCheck In: {request.checkin}'
+        flag = 0
+        for i in affected_locations:
+            if i[0] == request.location:
+                flag = 1
+                break
         checkin_entry = [request.name, request.nric,
-                         request.location, request.checkin, '-', 1, request.id, 0]
+                         request.location, request.checkin, '-', 1, request.id, flag]
         print(checkin_entry)
 
         # Save data in csv file
@@ -28,7 +37,9 @@ class SafeEntry(safeEntry_pb2_grpc.SafeEntryServicer):
         csv_writer = csv.writer(file)
         csv_writer.writerow(checkin_entry)
         file.close()
-        return checkin_message
+        if flag == 1:
+            return safeEntry_pb2.Reply(message="You have just checked in an area visited by a covid positive case in past 14 days")
+        return safeEntry_pb2.Reply(message="Check in successful")
 
     # Self Check Out
     def CheckOut(self, request, context):
@@ -57,10 +68,17 @@ class SafeEntry(safeEntry_pb2_grpc.SafeEntryServicer):
     def GroupCheckIn(self, request_iterator, context):
         groupcheckin_message = safeEntry_pb2.DelayedReply()
         i = 0
+        global affected_locations
+
+        flag = 0
         for request in request_iterator:
+            for i in affected_locations:
+                if i[0] == request.location:
+                    flag = 1
+                    break
             groupcheckin_message.request.append(request)
             groupcheckin_entry = [request.name, request.nric, request.location,
-                                  request.checkin, '-', request.groupnumber, request.id, 0]
+                                  request.checkin, '-', request.groupnumber, request.id, flag]
             print(groupcheckin_entry)
             if i == 0:
                 groupcheckin_message.message = f'Name: {request.name}\nNRIC: {request.nric}\nLocation: {request.location}\nCheck In: {request.checkin}\nGroup Number: {request.groupnumber}'
@@ -71,10 +89,12 @@ class SafeEntry(safeEntry_pb2_grpc.SafeEntryServicer):
             csv_writer = csv.writer(file)
             csv_writer.writerow(groupcheckin_entry)
             file.close()
-
+        if flag == 1:
+            groupcheckin_message.message += "\nYour group have just checked in an area visited by a covid positive case in past 14 days\n\n"
         return groupcheckin_message
 
     # Group Check Out
+
     def GroupCheckOut(self, request, context):
 
         groupcheckout_message = safeEntry_pb2.Reply()
@@ -97,16 +117,8 @@ class SafeEntry(safeEntry_pb2_grpc.SafeEntryServicer):
 
         return groupcheckout_message
 
-    # List cases in the past 14 days
-    def DeclareAffected(self, request, context):
-
-        return super().DeclareAffected(request, context)
-
     def ListCases(self, request_iterator, context):
-
-        infected_details = []
-        original = pd.read_csv("safeEntry.csv", header=None)
-        safeEntry = original
+        safeEntry = pd.read_csv("safeEntry.csv", header=None)
         safeEntry[3] = pd.to_datetime(safeEntry[3])
         cases = safeEntry.loc[(safeEntry[3] > datetime.datetime.now(
         ) - pd.to_timedelta("14day"))]
@@ -115,37 +127,72 @@ class SafeEntry(safeEntry_pb2_grpc.SafeEntryServicer):
                 for index, row in cases.iterrows():
                     yield safeEntry_pb2.Reply(message=f'{index, [item for item in row]}')
             else:
-                print("Infected Locations")
-                case = cases.iloc[int(request.message)]
-                case_check_in_details = (case[2], case[3], case[4])
+                try:
+                    case = cases.loc[int(request.message)]
+                except:
+                    yield safeEntry_pb2.Reply(message="Make Sure index chosen is correct")
+                else:
+                    case_check_in_details = (case[2], case[3], case[4])
 
-                list_of_possible_exposure = cases.loc[(
-                    cases[2] == case[2]) & (cases[3] >= case[3])]
-                indexes = list_of_possible_exposure.index.tolist()
-                print(list_of_possible_exposure)
-                unique_people = list_of_possible_exposure[1].unique()
-                possible_exposure = {}
-                for unique_person in unique_people:
-                    possible_exposure[unique_person] = case_check_in_details
-                global to_notify
-                d = to_notify
-                for unique_person in unique_people:
-                    if unique_person in d:
-                        d[unique_person].append(case_check_in_details)
+                    list_of_possible_exposure = cases.loc[(
+                        cases[2] == case[2])]
+
+                    unique_people = list_of_possible_exposure[1].unique()
+
+                    possible_exposure = {}
+                    for unique_person in unique_people:
+                        possible_exposure[unique_person] = case_check_in_details
+                    global to_notify
+                    d = to_notify
+                    if case_check_in_details[2] == '-':
+                        temp = (
+                            case_check_in_details[0], case_check_in_details[1].strftime("%d/%m/%Y %H:%M:%S"), '-')
                     else:
-                        d[unique_person] = [case_check_in_details]
-                to_notify = d
-                original.iloc[indexes, 7] = 1
-                original.to_csv("safeEntry.csv", header=False, index=False)
-                return safeEntry_pb2.Reply(message="Notification Sent!")
+                        temp = (case_check_in_details[0], case_check_in_details[1].strftime(
+                            "%d/%m/%Y %H:%M:%S"), case_check_in_details[2])
+                    for unique_person in unique_people:
+
+                        if unique_person in d:
+                            d[unique_person].append(temp)
+                        else:
+                            d[unique_person] = [temp]
+                    to_notify = d
+                    global affected_locations
+                    affected_locations.append((case[2], case[3], case[4]))
+                    safeEntry.iloc[case.index, 7] = 1
+                    safeEntry.to_csv(
+                        "safeEntry.csv", header=False, index=False)
+                    yield safeEntry_pb2.Reply(message="Notification Sent!")
 
     def GetNotified(self, request, context):
         request = request.message
+        print(request)
         if request in to_notify:
-            print("to_notify")
-            return safeEntry_pb2.Reply(message=to_notify[request])
+            reply = str(to_notify[request])
+            del to_notify[request]
+            return safeEntry_pb2.Reply(message=reply)
         else:
             return safeEntry_pb2.Reply(message="False")
+
+    def LogInNotification(self, request, context):
+        safeEntry = pd.read_csv("safeEntry.csv", header=None)
+        safeEntry[3] = pd.to_datetime(safeEntry[3])
+
+        cases = safeEntry.loc[(safeEntry[3] > datetime.datetime.now(
+        ) - pd.to_timedelta("14day")) & (safeEntry[7] == 1)]
+
+        if cases.empty:
+            print("There is no active cases in the past 14 days")
+            return safeEntry_pb2.Reply(message="Log In Success")
+        check = cases.loc[cases[1] == request.message]
+        if check.empty:
+            print("User was not in any affected areas in the past 14 Days")
+            return safeEntry_pb2.Reply(message="Log In Success")
+        print("User was in an affected area in the past 14 Days")
+        check[3] = pd.to_datetime(check[3])
+        for i, j in check.iterrows():
+            yield safeEntry_pb2.Reply(message=f'Location: {j[2]} from {str(j[3])} to {j[4]}')
+        return safeEntry_pb2.Reply(message="False")
 
 
 def serve():
@@ -153,9 +200,36 @@ def serve():
     safeEntry_pb2_grpc.add_SafeEntryServicer_to_server(SafeEntry(), server)
     server.add_insecure_port('[::]:50051')
     server.start()
+    t2 = threading.Thread(target=update_locations)
+    t2.start()
     server.wait_for_termination()
+
+
+def update_locations():
+    while True:
+        global affected_locations
+        new = []
+        if not affected_locations:
+            pass
+        else:
+            for i in affected_locations:
+                if i[1] > datetime.datetime.now() - pd.to_timedelta("14day"):
+                    new.append(i)
+        affected_locations = new
+        print(affected_locations)
+        time.sleep(5)
 
 
 if __name__ == '__main__':
     logging.basicConfig()
+
+    safeEntry = pd.read_csv("safeEntry.csv", header=None)
+    safeEntry[3] = pd.to_datetime(safeEntry[3])
+
+    cases = safeEntry.loc[(safeEntry[3] > datetime.datetime.now(
+    ) - pd.to_timedelta("14day")) & (safeEntry[7] == 1)]
+    new = []
+    for i, j in cases.iterrows():
+        new.append((j[2], j[3], j[4]))
+    affected_locations = new
     serve()
