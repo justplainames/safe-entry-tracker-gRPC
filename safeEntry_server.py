@@ -7,7 +7,6 @@ import safeEntry_pb2_grpc
 import csv
 import pandas as pd
 import datetime
-from collections import defaultdict
 import time
 import threading
 
@@ -29,7 +28,7 @@ class SafeEntry(safeEntry_pb2_grpc.SafeEntryServicer):
                 flag = 1
                 break
         checkin_entry = [request.name, request.nric,
-                         request.location, request.checkin, '-', 1, request.id, flag]
+                         request.location, request.checkin, '-', 1, request.id, 0]
         print(checkin_entry)
 
         # Save data in csv file
@@ -78,7 +77,7 @@ class SafeEntry(safeEntry_pb2_grpc.SafeEntryServicer):
                     break
             groupcheckin_message.request.append(request)
             groupcheckin_entry = [request.name, request.nric, request.location,
-                                  request.checkin, '-', request.groupnumber, request.id, flag]
+                                  request.checkin, '-', request.groupnumber, request.id, 0]
             print(groupcheckin_entry)
             if i == 0:
                 groupcheckin_message.message = f'Name: {request.name}\nNRIC: {request.nric}\nLocation: {request.location}\nCheck In: {request.checkin}\nGroup Number: {request.groupnumber}'
