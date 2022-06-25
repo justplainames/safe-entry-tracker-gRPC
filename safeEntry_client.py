@@ -89,7 +89,7 @@ def run():
                             checkout_time = timestamp.strftime(
                                 "%d/%m/%Y %H:%M:%S")
                             request = safeEntry_pb2.Request(
-                                name=name_input, nric=nric_input, location='West Mall', checkin=row[3], checkout=checkout_time, id=check_id)
+                                name=name_input, nric=nric_input, location=selected_location, checkin=row[3], checkout=checkout_time, id=check_id)
                             response = stub.CheckOut(request)
                             checkout_message = "Details:\n" + \
                                 str(response.message)
@@ -98,7 +98,7 @@ def run():
                 # Group Check In
                 elif rpc_call == "3":
                     response = stub.GroupCheckIn(
-                        groupcheckin_requests(name_input, nric_input))
+                        groupcheckin_requests(name_input, nric_input, selected_location))
                     groupcheckin_message = "Details:\n" + str(response.message)
                     print(groupcheckin_message)
 
@@ -121,7 +121,7 @@ def run():
                             timestamp = datetime.now()
                             checkout_time = timestamp.strftime(
                                 "%d/%m/%Y %H:%M:%S")
-                            request = safeEntry_pb2.Request(name=name_input, nric=nric_input, location='West Mall',
+                            request = safeEntry_pb2.Request(name=name_input, nric=nric_input, location=selected_location,
                                                             checkin=row[3], checkout=checkout_time, groupnumber=int(group_number), id=group_check_id)
                             response = stub.GroupCheckOut(request)
                             checkout_message = "Details:\n" + \
@@ -129,7 +129,7 @@ def run():
                             print(checkout_message)
 
 
-def groupcheckin_requests(name_input, nric_input):
+def groupcheckin_requests(name_input, nric_input, selected_location):
     list_name = [name_input]
     list_nric = [nric_input]
 
@@ -158,7 +158,7 @@ def groupcheckin_requests(name_input, nric_input):
     for row in range(len(list_name)):
         if row != 0:
             group_number = 0
-        request = safeEntry_pb2.Request(name=list_name[row], nric=list_nric[row], location='West Mall',
+        request = safeEntry_pb2.Request(name=list_name[row], nric=list_nric[row], location=selected_location,
                                         checkin=checkin_time, groupnumber=group_number, id=group_tracking_id)
         yield request
         time.sleep(1)
