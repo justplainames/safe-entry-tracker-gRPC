@@ -56,6 +56,7 @@ def run():
                 print("2. Check Out")
                 print("3. Group Check In")
                 print("4. Group Check Out")
+                print("5. History List")
                 rpc_call = input("Please enter number: ")
 
                 # Check In
@@ -128,6 +129,13 @@ def run():
                                 str(response.message)
                             print(checkout_message)
 
+                # History Listing
+                elif rpc_call == "5":
+                    request = safeEntry_pb2.Request(
+                        name=name_input, nric=nric_input)
+                    response = stub.HistoryListing(request)
+                    for message in response:
+                        print(message)
 
 def groupcheckin_requests(name_input, nric_input, selected_location):
     list_name = [name_input]

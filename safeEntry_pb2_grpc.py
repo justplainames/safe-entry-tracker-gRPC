@@ -35,6 +35,11 @@ class SafeEntryStub(object):
                 request_serializer=safeEntry__pb2.Request.SerializeToString,
                 response_deserializer=safeEntry__pb2.Reply.FromString,
                 )
+        self.HistoryListing = channel.unary_stream(
+                '/safeEntry.SafeEntry/HistoryListing',
+                request_serializer=safeEntry__pb2.Request.SerializeToString,
+                response_deserializer=safeEntry__pb2.Reply.FromString,
+                )
         self.ListCases = channel.stream_stream(
                 '/safeEntry.SafeEntry/ListCases',
                 request_serializer=safeEntry__pb2.Reply.SerializeToString,
@@ -85,6 +90,12 @@ class SafeEntryServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def HistoryListing(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def ListCases(self, request_iterator, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -129,6 +140,11 @@ def add_SafeEntryServicer_to_server(servicer, server):
             ),
             'GroupCheckOut': grpc.unary_unary_rpc_method_handler(
                     servicer.GroupCheckOut,
+                    request_deserializer=safeEntry__pb2.Request.FromString,
+                    response_serializer=safeEntry__pb2.Reply.SerializeToString,
+            ),
+            'HistoryListing': grpc.unary_stream_rpc_method_handler(
+                    servicer.HistoryListing,
                     request_deserializer=safeEntry__pb2.Request.FromString,
                     response_serializer=safeEntry__pb2.Reply.SerializeToString,
             ),
@@ -226,6 +242,23 @@ class SafeEntry(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/safeEntry.SafeEntry/GroupCheckOut',
+            safeEntry__pb2.Request.SerializeToString,
+            safeEntry__pb2.Reply.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def HistoryListing(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(request, target, '/safeEntry.SafeEntry/HistoryListing',
             safeEntry__pb2.Request.SerializeToString,
             safeEntry__pb2.Reply.FromString,
             options, channel_credentials,
