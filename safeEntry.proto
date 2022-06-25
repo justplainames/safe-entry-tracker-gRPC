@@ -8,6 +8,7 @@ service SafeEntry {
   rpc CheckOut (Request) returns (Reply) {}
   rpc GroupCheckIn (stream Request) returns (Reply) {}
   rpc GroupCheckOut (Request) returns (Reply) {}
+  rpc HistoryListing (Request) returns (stream Reply) {}
   rpc ListCases (stream Reply) returns (stream Reply){}
   rpc DeclareAffected (Reply) returns (Reply){}
   rpc GetNotified(Reply) returns (Reply){}

@@ -131,16 +131,11 @@ def run():
 
                 # History Listing
                 elif rpc_call == "5":
-                    file = open('safeEntry.csv')
-                    csvreader = csv.reader(file)
-                    data = list(csvreader)
-                    file.close()
-                    for row in reversed(data):
-                        existing_name = row[0]
-                        existing_nric = row[1]
-                        if existing_name == name_input and existing_nric == nric_input:
-                            message = "[Location: " + row[2] + " | Check In: " + row[3] + " | Check Out: " + row[4] + "]"
-                            print (message)
+                    request = safeEntry_pb2.Request(
+                        name=name_input, nric=nric_input)
+                    response = stub.HistoryListing(request)
+                    for message in response:
+                        print(message)
 
 def groupcheckin_requests(name_input, nric_input, selected_location):
     list_name = [name_input]

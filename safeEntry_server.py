@@ -94,7 +94,6 @@ class SafeEntry(safeEntry_pb2_grpc.SafeEntryServicer):
         return groupcheckin_message
 
     # Group Check Out
-
     def GroupCheckOut(self, request, context):
 
         groupcheckout_message = safeEntry_pb2.Reply()
@@ -116,6 +115,22 @@ class SafeEntry(safeEntry_pb2_grpc.SafeEntryServicer):
                 file.close()
 
         return groupcheckout_message
+
+    # Self Check In
+    def HistoryListing(self, request, context):
+        file = open('safeEntry.csv')
+        csvreader = csv.reader(file)
+        data = list(csvreader)
+        file.close()
+        historylisting_message = safeEntry_pb2.Reply()
+        
+        for row in reversed(data):
+            existing_name = row[0]
+            existing_nric = row[1]
+            if existing_name == request.name and existing_nric == request.nric:
+                historylisting_message.message = "[Location: " + row[2] + " | Check In: " + row[3] + " | Check Out: " + row[4] + "]"
+                yield historylisting_message
+                time.sleep(0)
 
     def ListCases(self, request_iterator, context):
         safeEntry = pd.read_csv("safeEntry.csv", header=None)
