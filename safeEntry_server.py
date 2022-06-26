@@ -1,5 +1,6 @@
 from concurrent import futures
 import logging
+from turtle import pos
 
 import grpc
 import safeEntry_pb2
@@ -11,7 +12,7 @@ import time
 import threading
 
 
-to_notify = {"237444T": [("a", 'b', 'c'), ('d', 'e', 'f')]}
+to_notify = {}
 affected_locations = []
 
 
@@ -36,6 +37,9 @@ class SafeEntry(safeEntry_pb2_grpc.SafeEntryServicer):
         csv_writer = csv.writer(file)
         csv_writer.writerow(checkin_entry)
         file.close()
+
+        df = pd.read_csv("safeEntry.csv", header=None)
+
         if flag == 1:
             return safeEntry_pb2.Reply(message="You have just checked in an area visited by a covid positive case in past 14 days")
         return safeEntry_pb2.Reply(message="Check in successful")
@@ -122,12 +126,13 @@ class SafeEntry(safeEntry_pb2_grpc.SafeEntryServicer):
         data = list(csvreader)
         file.close()
         historylisting_message = safeEntry_pb2.Reply()
-        
+
         for row in reversed(data):
             existing_name = row[0]
             existing_nric = row[1]
             if existing_name == request.name and existing_nric == request.nric:
-                historylisting_message.message = "[Location: " + row[2] + " | Check In: " + row[3] + " | Check Out: " + row[4] + "]"
+                historylisting_message.message = "[Location: " + row[2] + \
+                    " | Check In: " + row[3] + " | Check Out: " + row[4] + "]"
                 yield historylisting_message
                 time.sleep(0)
 
@@ -180,7 +185,6 @@ class SafeEntry(safeEntry_pb2_grpc.SafeEntryServicer):
 
     def GetNotified(self, request, context):
         request = request.message
-        print(request)
         if request in to_notify:
             reply = str(to_notify[request])
             del to_notify[request]
@@ -189,24 +193,25 @@ class SafeEntry(safeEntry_pb2_grpc.SafeEntryServicer):
             return safeEntry_pb2.Reply(message="False")
 
     def LogInNotification(self, request, context):
-        safeEntry = pd.read_csv("safeEntry.csv", header=None)
-        safeEntry[3] = pd.to_datetime(safeEntry[3])
+        df = pd.read_csv("safeEntry.csv", header=None, parse_dates=[3])
+        cases = df.loc[(df[3] > datetime.datetime.now(
+        ) - pd.to_timedelta("14day")) & (df[1] == request.message)][2].unique()
 
-        cases = safeEntry.loc[(safeEntry[3] > datetime.datetime.now(
-        ) - pd.to_timedelta("14day")) & (safeEntry[7] == 1)]
-
-        if cases.empty:
-            print("There is no active cases in the past 14 days")
+        if len(cases) != 0:
+            yield safeEntry_pb2.Reply(message='You recently were in area visited by covid positive case. Here are the details:')
+            possible_exposure = {}
+            for location, checkin, checkout in affected_locations:
+                if (location in possible_exposure) and (location in cases):
+                    possible_exposure[location].append([checkin, checkout])
+                elif (location not in possible_exposure) and (location in cases):
+                    possible_exposure[location] = [[checkin, checkout]]
+            for j in cases:
+                for value in possible_exposure.values():
+                    for i in value:
+                        yield safeEntry_pb2.Reply(message=f'Location: {j} from {str(i[0])} to {str(i[1])}')
+            return safeEntry_pb2.Reply(message="False")
+        else:
             return safeEntry_pb2.Reply(message="Log In Success")
-        check = cases.loc[cases[1] == request.message]
-        if check.empty:
-            print("User was not in any affected areas in the past 14 Days")
-            return safeEntry_pb2.Reply(message="Log In Success")
-        print("User was in an affected area in the past 14 Days")
-        check[3] = pd.to_datetime(check[3])
-        for i, j in check.iterrows():
-            yield safeEntry_pb2.Reply(message=f'Location: {j[2]} from {str(j[3])} to {j[4]}')
-        return safeEntry_pb2.Reply(message="False")
 
 
 def serve():
@@ -230,7 +235,7 @@ def update_locations():
                 if i[1] > datetime.datetime.now() - pd.to_timedelta("14day"):
                     new.append(i)
         affected_locations = new
-        print(affected_locations)
+
         time.sleep(5)
 
 
@@ -246,4 +251,5 @@ if __name__ == '__main__':
     for i, j in cases.iterrows():
         new.append((j[2], j[3], j[4]))
     affected_locations = new
+
     serve()

@@ -137,6 +137,7 @@ def run():
                     for message in response:
                         print(message)
 
+
 def groupcheckin_requests(name_input, nric_input, selected_location):
     list_name = [name_input]
     list_nric = [nric_input]
