@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package safeEntry;
+
+// The greeting service definition.
+service SafeEntry {
+  rpc CheckIn (Request) returns (Reply) {}
+  rpc CheckOut (Request) returns (Reply) {}
+  rpc GroupCheckIn (stream Request) returns (Reply) {}
+  rpc GroupCheckOut (Request) returns (Reply) {}
+  rpc HistoryListing (Request) returns (stream Reply) {}
+  rpc ListCases (stream Reply) returns (stream Reply){}
+  rpc DeclareAffected (Reply) returns (Reply){}
+  rpc GetNotified(Reply) returns (Reply){}
+  rpc LogInNotification(Reply) returns(stream Reply){}
+}
+
+// An empty request message
+message Empty{}
+
+// The request message containing the user's name.
+message Request {
+  string name = 1;
+  string nric = 2;
+  string location = 3;
+  string checkin = 4;
+  string checkout = 5;
+  int32 groupnumber = 6;
+  string id = 7;
+  int32 flag = 8;
+}
+
+// The response message containing the greetings
+message Reply {
+  string message = 1;
+}
+
+message DelayedReply {
+  string message = 1;
+  repeated Request request = 2;
+}
